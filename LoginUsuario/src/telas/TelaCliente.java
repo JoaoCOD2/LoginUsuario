@@ -23,6 +23,66 @@ public class TelaCliente extends javax.swing.JInternalFrame {
         configurarMascaras();
     }
 
+    private void configurarMascaras() {
+        try {
+            javax.swing.text.MaskFormatter telefone
+                    = new javax.swing.text.MaskFormatter("(##) #####-####");
+            telefone.setPlaceholderCharacter('_');
+
+            javax.swing.text.MaskFormatter data
+                    = new javax.swing.text.MaskFormatter("##/##/####");
+            data.setPlaceholderCharacter('_');
+
+            javax.swing.text.MaskFormatter cpf
+                    = new javax.swing.text.MaskFormatter("###.###.###-##");
+            cpf.setPlaceholderCharacter('_');
+
+            txtTeleCliente.setFormatterFactory(
+                    new javax.swing.text.DefaultFormatterFactory(telefone)
+            );
+
+            txtDatNascCliente.setFormatterFactory(
+                    new javax.swing.text.DefaultFormatterFactory(data)
+            );
+
+            TXTdocumento.setFormatterFactory(
+                    new javax.swing.text.DefaultFormatterFactory(cpf)
+            );
+
+        } catch (java.text.ParseException e) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Erro ao configurar máscaras."
+            );
+        }
+    }
+
+    private void configurarMascaraDocumento(String tipo) {
+        try {
+            javax.swing.text.MaskFormatter mascara;
+
+            if (tipo.equals("CPF")) {
+                mascara = new javax.swing.text.MaskFormatter("###.###.###-##");
+            } else {
+                mascara = new javax.swing.text.MaskFormatter("##.###.###/####-##");
+            }
+
+            mascara.setPlaceholderCharacter('_');
+
+            TXTdocumento.setFormatterFactory(
+                    new javax.swing.text.DefaultFormatterFactory(mascara)
+            );
+
+            TXTdocumento.setValue(null);
+
+        } catch (java.text.ParseException e) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Erro ao configurar máscara do documento."
+            );
+        }
+    }
+
     // =========================
     // LIMPAR CAMPOS
     // =========================
@@ -37,8 +97,6 @@ public class TelaCliente extends javax.swing.JInternalFrame {
         txtDatNascCliente.setText("");
         buttonGroup1.clearSelection();
     }
-    
-    
 
     // =========================
     // VERIFICAR CONEXÃO
@@ -207,7 +265,6 @@ public class TelaCliente extends javax.swing.JInternalFrame {
         String id = txtIdCliente.getText().trim();
 
         if (id.isEmpty()) {
-
             JOptionPane.showMessageDialog(
                     this,
                     "Informe o ID do cliente."
@@ -217,9 +274,7 @@ public class TelaCliente extends javax.swing.JInternalFrame {
             return;
         }
 
-        String sql
-                = "SELECT * FROM tb_cliente "
-                + "WHERE id_cliente = ?";
+        String sql = "SELECT * FROM tb_cliente WHERE id_cliente = ?";
 
         try (PreparedStatement pst = conexao.prepareStatement(sql)) {
 
@@ -245,6 +300,19 @@ public class TelaCliente extends javax.swing.JInternalFrame {
                             rs.getString("uf_cliente")
                     );
 
+                    String tipo = rs.getString("tipo_cliente");
+
+                    if ("PF".equalsIgnoreCase(tipo)) {
+
+                        rbCPF.setSelected(true);
+                        configurarMascaraDocumento("CPF");
+
+                    } else if ("PJ".equalsIgnoreCase(tipo)) {
+
+                        RB.setSelected(true);
+                        configurarMascaraDocumento("CNPJ");
+                    }
+
                     TXTdocumento.setText(
                             rs.getString("cpf_cnpj_cliente")
                     );
@@ -253,9 +321,7 @@ public class TelaCliente extends javax.swing.JInternalFrame {
                             rs.getString("telefone_cliente")
                     );
 
-                    String data = rs.getString(
-                            "data_nasc_cliente"
-                    );
+                    String data = rs.getString("data_nasc_cliente");
 
                     if (data != null && !data.isEmpty()) {
 
@@ -272,14 +338,6 @@ public class TelaCliente extends javax.swing.JInternalFrame {
 
                             txtDatNascCliente.setText(data);
                         }
-                    }
-
-                    String tipo = rs.getString("tipo_cliente");
-
-                    if ("PF".equalsIgnoreCase(tipo)) {
-                        rbCPF.setSelected(true);
-                    } else if ("PJ".equalsIgnoreCase(tipo)) {
-                        RB.setSelected(true);
                     }
 
                 } else {
@@ -609,8 +667,6 @@ public class TelaCliente extends javax.swing.JInternalFrame {
         txtIdCliente = new javax.swing.JTextField();
         txtNomeCliente = new javax.swing.JTextField();
         txtEndeCliente = new javax.swing.JTextField();
-        txtTeleCliente = new javax.swing.JTextField();
-        txtDatNascCliente = new javax.swing.JTextField();
         btnAdicionarCliente = new javax.swing.JButton();
         btnEditarCliente = new javax.swing.JButton();
         btnVizualizarCliente = new javax.swing.JButton();
@@ -619,9 +675,11 @@ public class TelaCliente extends javax.swing.JInternalFrame {
         RB = new javax.swing.JRadioButton();
         rbCPF = new javax.swing.JRadioButton();
         jLabel7 = new javax.swing.JLabel();
-        TXTdocumento = new javax.swing.JTextField();
         jLabel11 = new javax.swing.JLabel();
         cmbUf = new javax.swing.JComboBox<>();
+        TXTdocumento = new javax.swing.JFormattedTextField();
+        txtTeleCliente = new javax.swing.JFormattedTextField();
+        txtDatNascCliente = new javax.swing.JFormattedTextField();
 
         jLabel10.setText("jLabel10");
 
@@ -663,18 +721,6 @@ public class TelaCliente extends javax.swing.JInternalFrame {
         txtEndeCliente.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 txtEndeClienteActionPerformed(evt);
-            }
-        });
-
-        txtTeleCliente.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                txtTeleClienteActionPerformed(evt);
-            }
-        });
-
-        txtDatNascCliente.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                txtDatNascClienteActionPerformed(evt);
             }
         });
 
@@ -731,12 +777,6 @@ public class TelaCliente extends javax.swing.JInternalFrame {
 
         jLabel7.setText("CPF/CNPJ:");
 
-        TXTdocumento.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                TXTdocumentoActionPerformed(evt);
-            }
-        });
-
         jLabel11.setText("Tipo de pessoa:");
 
         cmbUf.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Selecione uma UF", "RS", "SC", "PR", "SP", "RJ", "MG" }));
@@ -750,30 +790,6 @@ public class TelaCliente extends javax.swing.JInternalFrame {
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createSequentialGroup()
-                        .addGap(39, 39, 39)
-                        .addComponent(jLabel8)
-                        .addGap(42, 42, 42))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(jLabel9)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)))
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                        .addComponent(txtDatNascCliente, javax.swing.GroupLayout.PREFERRED_SIZE, 299, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(62, 232, Short.MAX_VALUE))
-                    .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(txtTeleCliente, javax.swing.GroupLayout.PREFERRED_SIZE, 299, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtEndeCliente, javax.swing.GroupLayout.PREFERRED_SIZE, 166, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(TXTdocumento, javax.swing.GroupLayout.PREFERRED_SIZE, 219, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtNomeCliente, javax.swing.GroupLayout.PREFERRED_SIZE, 166, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtIdCliente, javax.swing.GroupLayout.PREFERRED_SIZE, 166, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(cmbCidade, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(cmbUf, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGap(0, 0, Short.MAX_VALUE))))
             .addGroup(layout.createSequentialGroup()
                 .addGap(41, 41, 41)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -795,6 +811,25 @@ public class TelaCliente extends javax.swing.JInternalFrame {
                         .addContainerGap(357, Short.MAX_VALUE))))
             .addGroup(layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(layout.createSequentialGroup()
+                                .addGap(39, 39, 39)
+                                .addComponent(jLabel8)
+                                .addGap(42, 42, 42))
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                                .addContainerGap()
+                                .addComponent(jLabel9)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)))
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(txtEndeCliente, javax.swing.GroupLayout.PREFERRED_SIZE, 166, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(txtNomeCliente, javax.swing.GroupLayout.PREFERRED_SIZE, 166, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(txtIdCliente, javax.swing.GroupLayout.PREFERRED_SIZE, 166, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(cmbCidade, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(cmbUf, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(TXTdocumento)
+                            .addComponent(txtTeleCliente)
+                            .addComponent(txtDatNascCliente, javax.swing.GroupLayout.DEFAULT_SIZE, 299, Short.MAX_VALUE)))
                     .addGroup(layout.createSequentialGroup()
                         .addGap(281, 281, 281)
                         .addComponent(jLabel1))
@@ -844,13 +879,13 @@ public class TelaCliente extends javax.swing.JInternalFrame {
                     .addComponent(TXTdocumento, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(18, 18, 18)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(txtTeleCliente, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel8))
+                    .addComponent(jLabel8)
+                    .addComponent(txtTeleCliente, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(18, 18, 18)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(txtDatNascCliente, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel9))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 48, Short.MAX_VALUE)
+                    .addComponent(jLabel9)
+                    .addComponent(txtDatNascCliente, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 52, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(btnAdicionarCliente)
                     .addComponent(btnEditarCliente))
@@ -864,10 +899,6 @@ public class TelaCliente extends javax.swing.JInternalFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void txtTeleClienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtTeleClienteActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_txtTeleClienteActionPerformed
-
     private void txtIdClienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtIdClienteActionPerformed
         // TODO add your handling code here:
         consultar();
@@ -880,10 +911,6 @@ public class TelaCliente extends javax.swing.JInternalFrame {
     private void txtEndeClienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtEndeClienteActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_txtEndeClienteActionPerformed
-
-    private void txtDatNascClienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtDatNascClienteActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_txtDatNascClienteActionPerformed
 
     private void btnAdicionarClienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnAdicionarClienteActionPerformed
         adicionar();
@@ -906,20 +933,15 @@ public class TelaCliente extends javax.swing.JInternalFrame {
     }//GEN-LAST:event_cmbCidadeActionPerformed
 
     private void RBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_RBActionPerformed
-        // TODO add your handling code here:
 
-        TXTdocumento.setText("");
+        configurarMascaraDocumento("CNPJ");
     }//GEN-LAST:event_RBActionPerformed
 
     private void rbCPFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_rbCPFActionPerformed
         // TODO add your handling code here:
 
-        TXTdocumento.setText("");
+        configurarMascaraDocumento("CPF");
     }//GEN-LAST:event_rbCPFActionPerformed
-
-    private void TXTdocumentoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_TXTdocumentoActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_TXTdocumentoActionPerformed
 
     private void cmbUfActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmbUfActionPerformed
         // TODO add your handling code here:
@@ -928,7 +950,7 @@ public class TelaCliente extends javax.swing.JInternalFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JRadioButton RB;
-    private javax.swing.JTextField TXTdocumento;
+    private javax.swing.JFormattedTextField TXTdocumento;
     private javax.swing.JButton btnAdicionarCliente;
     private javax.swing.JButton btnApagarCliente;
     private javax.swing.JButton btnEditarCliente;
@@ -950,10 +972,10 @@ public class TelaCliente extends javax.swing.JInternalFrame {
     private javax.swing.JList<String> jList1;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JRadioButton rbCPF;
-    private javax.swing.JTextField txtDatNascCliente;
+    private javax.swing.JFormattedTextField txtDatNascCliente;
     private javax.swing.JTextField txtEndeCliente;
     private javax.swing.JTextField txtIdCliente;
     private javax.swing.JTextField txtNomeCliente;
-    private javax.swing.JTextField txtTeleCliente;
+    private javax.swing.JFormattedTextField txtTeleCliente;
     // End of variables declaration//GEN-END:variables
 }

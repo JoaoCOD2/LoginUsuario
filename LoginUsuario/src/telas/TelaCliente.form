@@ -54,38 +54,6 @@
     <DimensionLayout dim="0">
       <Group type="103" groupAlignment="0" attributes="0">
           <Group type="102" alignment="0" attributes="0">
-              <Group type="103" groupAlignment="0" attributes="0">
-                  <Group type="102" attributes="0">
-                      <EmptySpace min="-2" pref="39" max="-2" attributes="0"/>
-                      <Component id="jLabel8" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace min="-2" pref="42" max="-2" attributes="0"/>
-                  </Group>
-                  <Group type="102" alignment="1" attributes="0">
-                      <EmptySpace max="-2" attributes="0"/>
-                      <Component id="jLabel9" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace max="-2" attributes="0"/>
-                  </Group>
-              </Group>
-              <Group type="103" groupAlignment="0" attributes="0">
-                  <Group type="102" alignment="1" attributes="0">
-                      <Component id="txtDatNascCliente" min="-2" pref="299" max="-2" attributes="0"/>
-                      <EmptySpace min="62" pref="232" max="32767" attributes="0"/>
-                  </Group>
-                  <Group type="102" attributes="0">
-                      <Group type="103" groupAlignment="0" attributes="0">
-                          <Component id="txtTeleCliente" min="-2" pref="299" max="-2" attributes="0"/>
-                          <Component id="txtEndeCliente" alignment="0" min="-2" pref="166" max="-2" attributes="0"/>
-                          <Component id="TXTdocumento" alignment="0" min="-2" pref="219" max="-2" attributes="0"/>
-                          <Component id="txtNomeCliente" alignment="0" min="-2" pref="166" max="-2" attributes="0"/>
-                          <Component id="txtIdCliente" alignment="0" min="-2" pref="166" max="-2" attributes="0"/>
-                          <Component id="cmbCidade" alignment="0" min="-2" max="-2" attributes="0"/>
-                          <Component id="cmbUf" alignment="0" min="-2" max="-2" attributes="0"/>
-                      </Group>
-                      <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
-                  </Group>
-              </Group>
-          </Group>
-          <Group type="102" alignment="0" attributes="0">
               <EmptySpace min="-2" pref="41" max="-2" attributes="0"/>
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="102" attributes="0">
@@ -111,6 +79,30 @@
           </Group>
           <Group type="102" attributes="0">
               <Group type="103" groupAlignment="0" attributes="0">
+                  <Group type="102" alignment="0" attributes="0">
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Group type="102" attributes="0">
+                              <EmptySpace min="-2" pref="39" max="-2" attributes="0"/>
+                              <Component id="jLabel8" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace min="-2" pref="42" max="-2" attributes="0"/>
+                          </Group>
+                          <Group type="102" alignment="1" attributes="0">
+                              <EmptySpace max="-2" attributes="0"/>
+                              <Component id="jLabel9" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace max="-2" attributes="0"/>
+                          </Group>
+                      </Group>
+                      <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                          <Component id="txtEndeCliente" alignment="0" min="-2" pref="166" max="-2" attributes="0"/>
+                          <Component id="txtNomeCliente" alignment="0" min="-2" pref="166" max="-2" attributes="0"/>
+                          <Component id="txtIdCliente" alignment="0" min="-2" pref="166" max="-2" attributes="0"/>
+                          <Component id="cmbCidade" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Component id="cmbUf" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Component id="TXTdocumento" alignment="0" max="32767" attributes="0"/>
+                          <Component id="txtTeleCliente" alignment="0" max="32767" attributes="0"/>
+                          <Component id="txtDatNascCliente" pref="299" max="32767" attributes="0"/>
+                      </Group>
+                  </Group>
                   <Group type="102" alignment="0" attributes="0">
                       <EmptySpace min="-2" pref="281" max="-2" attributes="0"/>
                       <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
@@ -174,15 +166,15 @@
               </Group>
               <EmptySpace type="separate" max="-2" attributes="0"/>
               <Group type="103" groupAlignment="3" attributes="0">
-                  <Component id="txtTeleCliente" alignment="3" min="-2" max="-2" attributes="0"/>
                   <Component id="jLabel8" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="txtTeleCliente" alignment="3" min="-2" max="-2" attributes="0"/>
               </Group>
               <EmptySpace type="separate" max="-2" attributes="0"/>
               <Group type="103" groupAlignment="3" attributes="0">
-                  <Component id="txtDatNascCliente" alignment="3" min="-2" max="-2" attributes="0"/>
                   <Component id="jLabel9" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="txtDatNascCliente" alignment="3" min="-2" max="-2" attributes="0"/>
               </Group>
-              <EmptySpace pref="48" max="32767" attributes="0"/>
+              <EmptySpace pref="52" max="32767" attributes="0"/>
               <Group type="103" groupAlignment="3" attributes="0">
                   <Component id="btnAdicionarCliente" alignment="3" min="-2" max="-2" attributes="0"/>
                   <Component id="btnEditarCliente" alignment="3" min="-2" max="-2" attributes="0"/>
@@ -251,16 +243,6 @@
     <Component class="javax.swing.JTextField" name="txtEndeCliente">
       <Events>
         <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="txtEndeClienteActionPerformed"/>
-      </Events>
-    </Component>
-    <Component class="javax.swing.JTextField" name="txtTeleCliente">
-      <Events>
-        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="txtTeleClienteActionPerformed"/>
-      </Events>
-    </Component>
-    <Component class="javax.swing.JTextField" name="txtDatNascCliente">
-      <Events>
-        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="txtDatNascClienteActionPerformed"/>
       </Events>
     </Component>
     <Component class="javax.swing.JButton" name="btnAdicionarCliente">
@@ -343,11 +325,6 @@
         <Property name="text" type="java.lang.String" value="CPF/CNPJ:"/>
       </Properties>
     </Component>
-    <Component class="javax.swing.JTextField" name="TXTdocumento">
-      <Events>
-        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="TXTdocumentoActionPerformed"/>
-      </Events>
-    </Component>
     <Component class="javax.swing.JLabel" name="jLabel11">
       <Properties>
         <Property name="text" type="java.lang.String" value="Tipo de pessoa:"/>
@@ -373,6 +350,12 @@
       <AuxValues>
         <AuxValue name="JavaCodeGenerator_TypeParameters" type="java.lang.String" value="&lt;String&gt;"/>
       </AuxValues>
+    </Component>
+    <Component class="javax.swing.JFormattedTextField" name="TXTdocumento">
+    </Component>
+    <Component class="javax.swing.JFormattedTextField" name="txtTeleCliente">
+    </Component>
+    <Component class="javax.swing.JFormattedTextField" name="txtDatNascCliente">
     </Component>
   </SubComponents>
 </Form>
