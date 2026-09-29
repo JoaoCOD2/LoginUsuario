@@ -15,6 +15,9 @@ public class TelaCliente extends javax.swing.JInternalFrame {
 
     private Connection conexao;
 
+    // cidade a selecionar depois que a lista do IBGE terminar de carregar
+    private String cidadePendente = null;
+
     private final DateTimeFormatter FORMATO_DATA
             = DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT);
 
@@ -57,10 +60,7 @@ public class TelaCliente extends javax.swing.JInternalFrame {
             );
 
         } catch (java.text.ParseException e) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Erro ao configurar máscaras."
-            );
+            JOptionPane.showMessageDialog(this, "Erro ao configurar máscaras.");
         }
     }
 
@@ -83,22 +83,85 @@ public class TelaCliente extends javax.swing.JInternalFrame {
             TXTdocumento.setValue(null);
 
         } catch (java.text.ParseException e) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Erro ao configurar máscara do documento."
-            );
+            JOptionPane.showMessageDialog(this, "Erro ao configurar máscara do documento.");
         }
+    }
+
+    // =========================
+    // CIDADES PELA API DO IBGE
+    // =========================
+    private void carregarCidadesIBGE(String uf) {
+        cmbCidade.removeAllItems();
+        cmbCidade.addItem("Carregando...");
+
+        new javax.swing.SwingWorker<java.util.List<String>, Void>() {
+            @Override
+            protected java.util.List<String> doInBackground() throws Exception {
+                java.net.URL url = new java.net.URL(
+                        "https://servicodados.ibge.gov.br/api/v1/localidades/estados/" + uf + "/municipios");
+                java.net.HttpURLConnection con = (java.net.HttpURLConnection) url.openConnection();
+                con.setRequestProperty("User-Agent", "Mozilla/5.0");
+                con.setConnectTimeout(5000);
+                con.setReadTimeout(8000);
+
+                StringBuilder sb = new StringBuilder();
+                try (java.io.BufferedReader br = new java.io.BufferedReader(
+                        new java.io.InputStreamReader(con.getInputStream(), "UTF-8"))) {
+                    String linha;
+                    while ((linha = br.readLine()) != null) {
+                        sb.append(linha);
+                    }
+                }
+
+                // pega só o nome do município (o objeto dele traz "microrregiao" logo depois)
+                java.util.List<String> nomes = new java.util.ArrayList<>();
+                java.util.regex.Matcher m = java.util.regex.Pattern
+                        .compile("\\{\"id\":\\d+,\"nome\":\"([^\"]+)\",\"microrregiao\"").matcher(sb);
+                while (m.find()) {
+                    nomes.add(m.group(1));
+                }
+                java.util.Collections.sort(nomes,
+                        java.text.Collator.getInstance(new java.util.Locale("pt", "BR")));
+                return nomes;
+            }
+
+            @Override
+            protected void done() {
+                // se o usuário já trocou de UF enquanto carregava, ignora este resultado
+                if (!uf.equals(cmbUf.getSelectedItem())) {
+                    return;
+                }
+                cmbCidade.removeAllItems();
+                cmbCidade.addItem("Selecione a cidade");
+                try {
+                    for (String n : get()) {
+                        cmbCidade.addItem(n);
+                    }
+                    if (cidadePendente != null) {
+                        cmbCidade.setSelectedItem(cidadePendente);
+                    }
+                } catch (Exception e) {
+                    JOptionPane.showMessageDialog(TelaCliente.this,
+                            "Não foi possível carregar as cidades. Verifique a internet.",
+                            "Erro", JOptionPane.WARNING_MESSAGE);
+                }
+                cidadePendente = null;
+            }
+        }.execute();
     }
 
     // =========================
     // LIMPAR CAMPOS
     // =========================
     private void limparCampos() {
+        cidadePendente = null;
         txtIdCliente.setText("");
         txtNomeCliente.setText("");
         txtEndeCliente.setText("");
-        cmbCidade.setSelectedIndex(0);
-        cmbUf.setSelectedIndex(0);
+        cmbUf.setSelectedIndex(0);      // dispara o evento que reinicia as cidades
+        if (cmbCidade.getItemCount() > 0) {
+            cmbCidade.setSelectedIndex(0);
+        }
         TXTdocumento.setText("");
         txtTeleCliente.setText("");
         txtDatNascCliente.setText("");
@@ -111,13 +174,9 @@ public class TelaCliente extends javax.swing.JInternalFrame {
     // =========================
     private boolean verificarConexao() {
         if (conexao == null) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Não foi possível conectar ao banco de dados."
-            );
+            JOptionPane.showMessageDialog(this, "Não foi possível conectar ao banco de dados.");
             return false;
         }
-
         return true;
     }
 
@@ -134,10 +193,7 @@ public class TelaCliente extends javax.swing.JInternalFrame {
             return "PJ";
         }
 
-        JOptionPane.showMessageDialog(
-                this,
-                "Selecione CPF ou CNPJ."
-        );
+        JOptionPane.showMessageDialog(this, "Selecione CPF ou CNPJ.");
 
         return null;
     }
@@ -186,8 +242,8 @@ public class TelaCliente extends javax.swing.JInternalFrame {
     }
 
     // =========================
-// VALIDAR CAMPOS
-// =========================
+    // VALIDAR CAMPOS
+    // =========================
     private boolean validarCampos() {
 
         if (txtNomeCliente.getText().trim().isEmpty()) {
@@ -204,17 +260,17 @@ public class TelaCliente extends javax.swing.JInternalFrame {
             return false;
         }
 
-        if (cmbCidade.getSelectedIndex() == 0) {
-            JOptionPane.showMessageDialog(this, "Selecione uma cidade.",
-                    "Atenção", JOptionPane.WARNING_MESSAGE);
-            cmbCidade.requestFocus();
-            return false;
-        }
-
-        if (cmbUf.getSelectedIndex() == 0) {
+        if (cmbUf.getSelectedIndex() <= 0) {
             JOptionPane.showMessageDialog(this, "Selecione uma UF.",
                     "Atenção", JOptionPane.WARNING_MESSAGE);
             cmbUf.requestFocus();
+            return false;
+        }
+
+        if (cmbCidade.getSelectedIndex() <= 0) {
+            JOptionPane.showMessageDialog(this, "Selecione uma cidade.",
+                    "Atenção", JOptionPane.WARNING_MESSAGE);
+            cmbCidade.requestFocus();
             return false;
         }
 
@@ -246,9 +302,9 @@ public class TelaCliente extends javax.swing.JInternalFrame {
         return true;
     }
 
-// =========================
-// VALIDAR DATA
-// =========================
+    // =========================
+    // VALIDAR DATA
+    // =========================
     private boolean validarData() {
 
         String data = txtDatNascCliente.getText().trim();
@@ -288,8 +344,31 @@ public class TelaCliente extends javax.swing.JInternalFrame {
     }
 
     // =========================
-// CONSULTAR
-// =========================
+    // APLICAR MÁSCARA
+    // =========================
+    private String aplicarMascara(String valor, String mascara) {
+        if (valor == null) {
+            return "";
+        }
+        String d = digitos(valor);
+        StringBuilder sb = new StringBuilder();
+        int i = 0;
+        for (char c : mascara.toCharArray()) {
+            if (c == '#') {
+                if (i >= d.length()) {
+                    break;
+                }
+                sb.append(d.charAt(i++));
+            } else {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
+    }
+
+    // =========================
+    // CONSULTAR
+    // =========================
     private void consultar() {
 
         if (!verificarConexao()) {
@@ -317,8 +396,15 @@ public class TelaCliente extends javax.swing.JInternalFrame {
 
                     txtNomeCliente.setText(rs.getString("nome_cliente"));
                     txtEndeCliente.setText(rs.getString("endereco_cliente"));
-                    cmbCidade.setSelectedItem(rs.getString("cidade_cliente"));
-                    cmbUf.setSelectedItem(rs.getString("uf_cliente"));
+
+                    // UF primeiro; a cidade é aplicada quando a lista do IBGE terminar
+                    String ufBanco = rs.getString("uf_cliente");
+                    cidadePendente = rs.getString("cidade_cliente");
+                    if (ufBanco != null && ufBanco.equals(cmbUf.getSelectedItem())) {
+                        carregarCidadesIBGE(ufBanco);   // mesma UF: o combo não dispara evento
+                    } else {
+                        cmbUf.setSelectedItem(ufBanco); // dispara cmbUfActionPerformed
+                    }
 
                     String tipo = rs.getString("tipo_cliente");
 
@@ -367,27 +453,6 @@ public class TelaCliente extends javax.swing.JInternalFrame {
         }
     }
 
-    //Metodo para aplicar a mascara
-    private String aplicarMascara(String valor, String mascara) {
-        if (valor == null) {
-            return "";
-        }
-        String d = digitos(valor);
-        StringBuilder sb = new StringBuilder();
-        int i = 0;
-        for (char c : mascara.toCharArray()) {
-            if (c == '#') {
-                if (i >= d.length()) {
-                    break;
-                }
-                sb.append(d.charAt(i++));
-            } else {
-                sb.append(c);
-            }
-        }
-        return sb.toString();
-    }
-
     // =========================
     // ADICIONAR
     // =========================
@@ -414,58 +479,21 @@ public class TelaCliente extends javax.swing.JInternalFrame {
                 + "telefone_cliente, data_nasc_cliente) "
                 + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
-        try (PreparedStatement pst
-                = conexao.prepareStatement(sql)) {
+        try (PreparedStatement pst = conexao.prepareStatement(sql)) {
 
-            pst.setString(
-                    1,
-                    txtNomeCliente.getText().trim()
-            );
-
-            pst.setString(
-                    2,
-                    txtEndeCliente.getText().trim()
-            );
-
-            pst.setString(
-                    3,
-                    cmbCidade.getSelectedItem().toString()
-            );
-
-            pst.setString(
-                    4,
-                    cmbUf.getSelectedItem().toString()
-            );
-
-            pst.setString(
-                    5,
-                    digitos(TXTdocumento.getText().trim())
-            );
-
-            pst.setString(
-                    6,
-                    tipo
-            );
-
-            pst.setString(
-                    7,
-                    digitos(txtTeleCliente.getText().trim())
-            );
-
-            pst.setString(
-                    8,
-                    converterDataParaMySQL()
-            );
+            pst.setString(1, txtNomeCliente.getText().trim());
+            pst.setString(2, txtEndeCliente.getText().trim());
+            pst.setString(3, cmbCidade.getSelectedItem().toString());
+            pst.setString(4, cmbUf.getSelectedItem().toString());
+            pst.setString(5, digitos(TXTdocumento.getText().trim()));
+            pst.setString(6, tipo);
+            pst.setString(7, digitos(txtTeleCliente.getText().trim()));
+            pst.setString(8, converterDataParaMySQL());
 
             int resultado = pst.executeUpdate();
 
             if (resultado > 0) {
-
-                JOptionPane.showMessageDialog(
-                        this,
-                        "Cliente cadastrado com sucesso!"
-                );
-
+                JOptionPane.showMessageDialog(this, "Cliente cadastrado com sucesso!");
                 limparCampos();
             }
 
@@ -492,12 +520,8 @@ public class TelaCliente extends javax.swing.JInternalFrame {
         String id = txtIdCliente.getText().trim();
 
         if (id.isEmpty()) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Informe o ID do cliente."
-            );
-
+            JOptionPane.showMessageDialog(this, "Informe o ID do cliente.",
+                    "Atenção", JOptionPane.WARNING_MESSAGE);
             txtIdCliente.requestFocus();
             return;
         }
@@ -524,69 +548,24 @@ public class TelaCliente extends javax.swing.JInternalFrame {
                 + "data_nasc_cliente = ? "
                 + "WHERE id_cliente = ?";
 
-        try (PreparedStatement pst
-                = conexao.prepareStatement(sql)) {
+        try (PreparedStatement pst = conexao.prepareStatement(sql)) {
 
-            pst.setString(
-                    1,
-                    txtNomeCliente.getText().trim()
-            );
-
-            pst.setString(
-                    2,
-                    txtEndeCliente.getText().trim()
-            );
-
-            pst.setString(
-                    3,
-                    cmbCidade.getSelectedItem().toString()
-            );
-
-            pst.setString(
-                    4,
-                    cmbUf.getSelectedItem().toString()
-            );
-
-            pst.setString(
-                    5,
-                    digitos(TXTdocumento.getText().trim())
-            );
-
-            pst.setString(
-                    6,
-                    tipo
-            );
-
-            pst.setString(
-                    7,
-                    digitos(txtTeleCliente.getText().trim())
-            );
-
-            pst.setString(
-                    8,
-                    converterDataParaMySQL()
-            );
-
-            pst.setString(
-                    9,
-                    id
-            );
+            pst.setString(1, txtNomeCliente.getText().trim());
+            pst.setString(2, txtEndeCliente.getText().trim());
+            pst.setString(3, cmbCidade.getSelectedItem().toString());
+            pst.setString(4, cmbUf.getSelectedItem().toString());
+            pst.setString(5, digitos(TXTdocumento.getText().trim()));
+            pst.setString(6, tipo);
+            pst.setString(7, digitos(txtTeleCliente.getText().trim()));
+            pst.setString(8, converterDataParaMySQL());
+            pst.setString(9, id);
 
             int resultado = pst.executeUpdate();
 
             if (resultado > 0) {
-
-                JOptionPane.showMessageDialog(
-                        this,
-                        "Cliente alterado com sucesso!"
-                );
-
+                JOptionPane.showMessageDialog(this, "Cliente alterado com sucesso!");
             } else {
-
-                JOptionPane.showMessageDialog(
-                        this,
-                        "Cliente não encontrado."
-                );
+                JOptionPane.showMessageDialog(this, "Cliente não encontrado.");
             }
 
         } catch (SQLException e) {
@@ -612,12 +591,8 @@ public class TelaCliente extends javax.swing.JInternalFrame {
         String id = txtIdCliente.getText().trim();
 
         if (id.isEmpty()) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Informe o ID do cliente."
-            );
-
+            JOptionPane.showMessageDialog(this, "Informe o ID do cliente.",
+                    "Atenção", JOptionPane.WARNING_MESSAGE);
             txtIdCliente.requestFocus();
             return;
         }
@@ -634,49 +609,27 @@ public class TelaCliente extends javax.swing.JInternalFrame {
             return;
         }
 
-        String sql
-                = "DELETE FROM tb_cliente "
-                + "WHERE id_cliente = ?";
+        String sql = "DELETE FROM tb_cliente WHERE id_cliente = ?";
 
-        try (PreparedStatement pst
-                = conexao.prepareStatement(sql)) {
+        try (PreparedStatement pst = conexao.prepareStatement(sql)) {
 
             pst.setString(1, id);
 
             int resultado = pst.executeUpdate();
 
             if (resultado > 0) {
-
-                JOptionPane.showMessageDialog(
-                        this,
-                        "Cliente apagado com sucesso!"
-                );
-
+                JOptionPane.showMessageDialog(this, "Cliente apagado com sucesso!");
                 limparCampos();
-
             } else {
-
-                JOptionPane.showMessageDialog(
-                        this,
-                        "Cliente não encontrado."
-                );
+                JOptionPane.showMessageDialog(this, "Cliente não encontrado.");
             }
 
         } catch (SQLException e) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Erro ao apagar cliente:\n"
-                    + e.getMessage()
-            );
+            JOptionPane.showMessageDialog(this, "Erro ao apagar cliente:\n" + e.getMessage(),
+                    "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    /**
-     * This method is called from within the constructor to initialize the form.
-     * WARNING: Do NOT modify this code. The content of this method is always
-     * regenerated by the Form Editor.
-     */
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
@@ -781,7 +734,7 @@ public class TelaCliente extends javax.swing.JInternalFrame {
             }
         });
 
-        cmbCidade.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Selecione a cidade", "Taquara", "Parobé", "Igrejinha", "Três Coroas", "Gramado", "Canela" }));
+        cmbCidade.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Selecione a cidade" }));
         cmbCidade.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cmbCidadeActionPerformed(evt);
@@ -808,7 +761,7 @@ public class TelaCliente extends javax.swing.JInternalFrame {
 
         jLabel11.setText("Tipo de pessoa:");
 
-        cmbUf.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Selecione uma UF", "RS", "SC", "PR", "SP", "RJ", "MG" }));
+        cmbUf.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Selecione uma UF", "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO" }));
         cmbUf.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cmbUfActionPerformed(evt);
@@ -823,55 +776,50 @@ public class TelaCliente extends javax.swing.JInternalFrame {
                 .addGap(41, 41, 41)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(jLabel7)
-                        .addGap(0, 0, Short.MAX_VALUE))
-                    .addGroup(layout.createSequentialGroup()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jLabel2)
                             .addComponent(jLabel4)
                             .addComponent(jLabel3)
-                            .addComponent(jLabel6)
-                            .addComponent(jLabel5)
                             .addComponent(jLabel11))
                         .addGap(29, 29, 29)
                         .addComponent(rbCPF)
                         .addGap(59, 59, 59)
                         .addComponent(RB)
-                        .addContainerGap(357, Short.MAX_VALUE))))
-            .addGroup(layout.createSequentialGroup()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addContainerGap(357, Short.MAX_VALUE))
                     .addGroup(layout.createSequentialGroup()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(layout.createSequentialGroup()
+                                .addGap(281, 281, 281)
+                                .addComponent(jLabel1))
+                            .addGroup(layout.createSequentialGroup()
                                 .addGap(39, 39, 39)
-                                .addComponent(jLabel8)
-                                .addGap(42, 42, 42))
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                                .addContainerGap()
-                                .addComponent(jLabel9)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)))
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(txtEndeCliente, javax.swing.GroupLayout.PREFERRED_SIZE, 166, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtNomeCliente, javax.swing.GroupLayout.PREFERRED_SIZE, 166, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtIdCliente, javax.swing.GroupLayout.PREFERRED_SIZE, 166, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(cmbCidade, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(cmbUf, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(TXTdocumento)
-                            .addComponent(txtTeleCliente)
-                            .addComponent(txtDatNascCliente, javax.swing.GroupLayout.DEFAULT_SIZE, 299, Short.MAX_VALUE)))
-                    .addGroup(layout.createSequentialGroup()
-                        .addGap(281, 281, 281)
-                        .addComponent(jLabel1))
-                    .addGroup(layout.createSequentialGroup()
-                        .addGap(39, 39, 39)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(btnAdicionarCliente, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(btnVizualizarCliente, javax.swing.GroupLayout.PREFERRED_SIZE, 85, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGap(18, 18, 18)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(btnEditarCliente, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(btnApagarCliente, javax.swing.GroupLayout.PREFERRED_SIZE, 85, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                .addGap(0, 0, Short.MAX_VALUE))
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                    .addComponent(btnAdicionarCliente, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(btnVizualizarCliente, javax.swing.GroupLayout.PREFERRED_SIZE, 85, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(18, 18, 18)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                    .addComponent(btnEditarCliente, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                    .addComponent(btnApagarCliente, javax.swing.GroupLayout.PREFERRED_SIZE, 85, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addGroup(layout.createSequentialGroup()
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(jLabel9, javax.swing.GroupLayout.Alignment.TRAILING)
+                                        .addComponent(jLabel6))
+                                    .addComponent(jLabel5)
+                                    .addComponent(jLabel8))
+                                .addGap(5, 5, 5)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(cmbCidade, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                        .addComponent(txtEndeCliente, javax.swing.GroupLayout.PREFERRED_SIZE, 166, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(txtNomeCliente, javax.swing.GroupLayout.PREFERRED_SIZE, 166, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(txtIdCliente, javax.swing.GroupLayout.PREFERRED_SIZE, 166, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(TXTdocumento)
+                                        .addComponent(txtTeleCliente)
+                                        .addComponent(txtDatNascCliente, javax.swing.GroupLayout.DEFAULT_SIZE, 299, Short.MAX_VALUE)
+                                        .addComponent(cmbUf, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                            .addComponent(jLabel7))
+                        .addGap(0, 0, Short.MAX_VALUE))))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -891,12 +839,12 @@ public class TelaCliente extends javax.swing.JInternalFrame {
                     .addComponent(txtEndeCliente, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel5)
-                    .addComponent(cmbCidade, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(cmbUf, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel6))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel6)
-                    .addComponent(cmbUf, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(cmbCidade, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel5))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(rbCPF)
@@ -914,7 +862,7 @@ public class TelaCliente extends javax.swing.JInternalFrame {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel9)
                     .addComponent(txtDatNascCliente, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 52, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 56, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(btnAdicionarCliente)
                     .addComponent(btnEditarCliente))
@@ -973,7 +921,12 @@ public class TelaCliente extends javax.swing.JInternalFrame {
     }//GEN-LAST:event_rbCPFActionPerformed
 
     private void cmbUfActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmbUfActionPerformed
-        // TODO add your handling code here:
+        if (cmbUf.getSelectedIndex() > 0) {
+            carregarCidadesIBGE(cmbUf.getSelectedItem().toString());
+        } else {
+            cmbCidade.removeAllItems();
+            cmbCidade.addItem("Selecione a cidade");
+        }
     }//GEN-LAST:event_cmbUfActionPerformed
 
 
