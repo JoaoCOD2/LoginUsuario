@@ -7,143 +7,162 @@ import javax.swing.JOptionPane;
 public class TelaUsuarios extends javax.swing.JInternalFrame {
 
     Connection conexao = null;
-    PreparedStatement pst = null;
-    ResultSet rs = null;
 
     public TelaUsuarios() {
         initComponents();
         conexao = Mod_conexao.conector();
+        addInternalFrameListener(new javax.swing.event.InternalFrameAdapter() {
+            @Override
+            public void internalFrameClosed(javax.swing.event.InternalFrameEvent e) {
+                try {
+                    if (conexao != null) {
+                        conexao.close();
+                    }
+                } catch (SQLException ignored) {
+                }
+            }
+        });
+    }
+
+    private String getSenha() {
+        return new String(pwdSenha.getPassword());
+    }
+
+    private void limparCampos() {
+        txtId.setText("");
+        txtNome.setText("");
+        txtEmail.setText("");
+        pwdSenha.setText("");
+    }
+
+    private boolean validarId() {
+        if (txtId.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Informe o ID.",
+                    "Atenção", JOptionPane.WARNING_MESSAGE);
+            txtId.requestFocus();
+            return false;
+        }
+        return true;
+    }
+
+    private boolean validarCampos() {
+        if (txtNome.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Informe o nome.",
+                    "Atenção", JOptionPane.WARNING_MESSAGE);
+            txtNome.requestFocus();
+            return false;
+        }
+        if (!txtEmail.getText().trim().matches("^[\\w.+-]+@[\\w-]+(\\.[\\w-]+)+$")) {
+            JOptionPane.showMessageDialog(this, "E-mail inválido.",
+                    "Atenção", JOptionPane.WARNING_MESSAGE);
+            txtEmail.requestFocus();
+            return false;
+        }
+        if (getSenha().length() < 6) {
+            JOptionPane.showMessageDialog(this, "A senha deve ter ao menos 6 caracteres.",
+                    "Atenção", JOptionPane.WARNING_MESSAGE);
+            pwdSenha.requestFocus();
+            return false;
+        }
+        return true;
     }
 
     private void consultar() {
-        String sql = "SELECT * FROM tb_usuarios WHERE id=?";
-
-        try {
-            if (conexao == null) {
-                JOptionPane.showMessageDialog(null, "Não foi possível conectar ao banco de dados.");
-                return;
+        if (conexao == null || !validarId()) {
+            return;
+        }
+        String sql = "SELECT nome, email FROM tb_usuarios WHERE id = ?";
+        try (PreparedStatement pst = conexao.prepareStatement(sql)) {
+            pst.setString(1, txtId.getText().trim());
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    txtNome.setText(rs.getString("nome"));
+                    txtEmail.setText(rs.getString("email"));
+                    pwdSenha.setText("");
+                } else {
+                    JOptionPane.showMessageDialog(this, "Usuário não cadastrado.");
+                    limparCampos();
+                }
             }
-
-            pst = conexao.prepareStatement(sql);
-            pst.setString(1, txtId.getText());
-
-            rs = pst.executeQuery();
-
-            if (rs.next()) {
-                txtEmail.setText(rs.getString("nome"));
-                txtNome.setText(rs.getString("email"));
-                txtSenha.setText(rs.getString("senha"));
-            } else {
-                JOptionPane.showMessageDialog(null, "USUÁRIO NÃO CADASTRADO.");
-
-                txtEmail.setText(null);
-                txtNome.setText(null);
-                txtSenha.setText(null);
-            }
-
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(null, "Erro ao consultar usuário: " + e.getMessage());
+            JOptionPane.showMessageDialog(this, "Erro ao consultar: " + e.getMessage(),
+                    "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     private void adicionar() {
+        if (conexao == null || !validarCampos()) {
+            return;
+        }
         String sql = "INSERT INTO tb_usuarios (nome, email, senha) VALUES (?, ?, ?)";
-
-        try {
-            if (conexao == null) {
-                JOptionPane.showMessageDialog(null, "Não foi possível conectar ao banco de dados.");
-                return;
+        try (PreparedStatement pst = conexao.prepareStatement(sql)) {
+            pst.setString(1, txtNome.getText().trim());
+            pst.setString(2, txtEmail.getText().trim());
+            pst.setString(3, getSenha());
+            if (pst.executeUpdate() > 0) {
+                JOptionPane.showMessageDialog(this, "Usuário cadastrado com sucesso.");
+                limparCampos();
             }
-
-            pst = conexao.prepareStatement(sql);
-
-            pst.setString(1, txtEmail.getText());
-            pst.setString(2, txtNome.getText());
-            pst.setString(3, txtSenha.getText());
-
-            int adicionado = pst.executeUpdate();
-
-            if (adicionado > 0) {
-                JOptionPane.showMessageDialog(null, "USUÁRIO CADASTRADO COM SUCESSO.");
-
-                txtId.setText(null);
-                txtEmail.setText(null);
-                txtNome.setText(null);
-                txtSenha.setText(null);
-            }
-
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(null, "Erro ao adicionar usuário: " + e.getMessage());
+            if (e.getErrorCode() == 1062) {
+                JOptionPane.showMessageDialog(this, "Este e-mail já está cadastrado.",
+                        "Duplicado", JOptionPane.WARNING_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this, "Erro ao adicionar: " + e.getMessage(),
+                        "Erro", JOptionPane.ERROR_MESSAGE);
+            }
         }
     }
 
     private void alterar() {
+        if (conexao == null || !validarId() || !validarCampos()) {
+            return;
+        }
         String sql = "UPDATE tb_usuarios SET nome = ?, email = ?, senha = ? WHERE id = ?";
-
-        try {
-            if (conexao == null) {
-                JOptionPane.showMessageDialog(null, "Não foi possível conectar ao banco de dados.");
-                return;
-            }
-
-            pst = conexao.prepareStatement(sql);
-
-            pst.setString(1, txtEmail.getText());
-            pst.setString(2, txtNome.getText());
-            pst.setString(3, txtSenha.getText());
-            pst.setString(4, txtId.getText());
-
-            int alterado = pst.executeUpdate();
-
-            if (alterado > 0) {
-                JOptionPane.showMessageDialog(null, "USUÁRIO ALTERADO COM SUCESSO.");
+        try (PreparedStatement pst = conexao.prepareStatement(sql)) {
+            pst.setString(1, txtNome.getText().trim());
+            pst.setString(2, txtEmail.getText().trim());
+            pst.setString(3, getSenha());
+            pst.setString(4, txtId.getText().trim());
+            if (pst.executeUpdate() > 0) {
+                JOptionPane.showMessageDialog(this, "Usuário alterado com sucesso.");
             } else {
-                JOptionPane.showMessageDialog(null, "USUÁRIO NÃO ENCONTRADO.");
+                JOptionPane.showMessageDialog(this, "Usuário não encontrado.");
             }
-
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(null, "Erro ao alterar usuário: " + e.getMessage());
+            if (e.getErrorCode() == 1062) {
+                JOptionPane.showMessageDialog(this, "Este e-mail já está cadastrado.",
+                        "Duplicado", JOptionPane.WARNING_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this, "Erro ao alterar: " + e.getMessage(),
+                        "Erro", JOptionPane.ERROR_MESSAGE);
+            }
         }
     }
 
     private void apagar() {
-        int confirma = JOptionPane.showConfirmDialog(
-                null,
-                "Tem certeza que deseja excluir este usuário?",
-                "ATENÇÃO",
-                JOptionPane.YES_NO_OPTION
-        );
+        if (conexao == null || !validarId()) {
+            return;
+        }
+        int confirma = JOptionPane.showConfirmDialog(this,
+                "Tem certeza que deseja excluir este usuário?", "Atenção",
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (confirma != JOptionPane.YES_OPTION) {
+            return;
+        }
 
-        if (confirma == JOptionPane.YES_OPTION) {
-
-            String sql = "DELETE FROM tb_usuarios WHERE id = ?";
-
-            try {
-                if (conexao == null) {
-                    JOptionPane.showMessageDialog(null, "Não foi possível conectar ao banco de dados.");
-                    return;
-                }
-
-                pst = conexao.prepareStatement(sql);
-                pst.setString(1, txtId.getText());
-
-                int apagado = pst.executeUpdate();
-
-                if (apagado > 0) {
-                    JOptionPane.showMessageDialog(null, "USUÁRIO APAGADO COM SUCESSO.");
-
-                    txtId.setText(null);
-                    txtEmail.setText(null);
-                    txtNome.setText(null);
-                    txtSenha.setText(null);
-
-                } else {
-                    JOptionPane.showMessageDialog(null, "USUÁRIO NÃO ENCONTRADO.");
-                }
-
-            } catch (SQLException e) {
-                JOptionPane.showMessageDialog(null, "Erro ao apagar usuário: " + e.getMessage());
+        String sql = "DELETE FROM tb_usuarios WHERE id = ?";
+        try (PreparedStatement pst = conexao.prepareStatement(sql)) {
+            pst.setString(1, txtId.getText().trim());
+            if (pst.executeUpdate() > 0) {
+                JOptionPane.showMessageDialog(this, "Usuário apagado com sucesso.");
+                limparCampos();
+            } else {
+                JOptionPane.showMessageDialog(this, "Usuário não encontrado.");
             }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Erro ao apagar: " + e.getMessage(),
+                    "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -151,32 +170,32 @@ public class TelaUsuarios extends javax.swing.JInternalFrame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        ID = new javax.swing.JLabel();
-        nome = new javax.swing.JLabel();
-        email = new javax.swing.JLabel();
-        senha = new javax.swing.JLabel();
+        lblId = new javax.swing.JLabel();
+        lblNome = new javax.swing.JLabel();
+        lblEmail = new javax.swing.JLabel();
+        lblSenha = new javax.swing.JLabel();
         txtId = new javax.swing.JTextField();
         txtEmail = new javax.swing.JTextField();
         txtNome = new javax.swing.JTextField();
-        txtSenha = new javax.swing.JTextField();
-        jLabel1 = new javax.swing.JLabel();
+        lblTitulo = new javax.swing.JLabel();
         btnAdd = new javax.swing.JButton();
         btnVisualizar = new javax.swing.JButton();
         btnApagar = new javax.swing.JButton();
         btnEdit = new javax.swing.JButton();
+        pwdSenha = new javax.swing.JPasswordField();
 
         setClosable(true);
         setIconifiable(true);
         setMaximizable(true);
         setResizable(true);
 
-        ID.setText("ID:");
+        lblId.setText("ID:");
 
-        nome.setText("Nome:");
+        lblNome.setText("Nome:");
 
-        email.setText("Email:");
+        lblEmail.setText("Email:");
 
-        senha.setText("Senha");
+        lblSenha.setText("Senha:");
 
         txtId.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -190,8 +209,8 @@ public class TelaUsuarios extends javax.swing.JInternalFrame {
             }
         });
 
-        jLabel1.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
-        jLabel1.setText("TELA CADASTRO");
+        lblTitulo.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        lblTitulo.setText("Cadastro de usuários");
 
         btnAdd.setText("Adicionar");
         btnAdd.addActionListener(new java.awt.event.ActionListener() {
@@ -229,21 +248,21 @@ public class TelaUsuarios extends javax.swing.JInternalFrame {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
                         .addGap(250, 250, 250)
-                        .addComponent(jLabel1)
-                        .addGap(0, 123, Short.MAX_VALUE))
+                        .addComponent(lblTitulo)
+                        .addGap(0, 103, Short.MAX_VALUE))
                     .addGroup(layout.createSequentialGroup()
                         .addGap(110, 110, 110)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(ID, javax.swing.GroupLayout.PREFERRED_SIZE, 29, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(email)
-                            .addComponent(senha)
-                            .addComponent(nome))
+                            .addComponent(lblId, javax.swing.GroupLayout.PREFERRED_SIZE, 29, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(lblEmail)
+                            .addComponent(lblSenha)
+                            .addComponent(lblNome))
                         .addGap(32, 32, 32)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(txtSenha)
                             .addComponent(txtNome)
                             .addComponent(txtEmail)
-                            .addComponent(txtId)))
+                            .addComponent(txtId)
+                            .addComponent(pwdSenha)))
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                         .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -251,32 +270,33 @@ public class TelaUsuarios extends javax.swing.JInternalFrame {
                             .addComponent(btnVisualizar))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(btnEdit, javax.swing.GroupLayout.DEFAULT_SIZE, 91, Short.MAX_VALUE)
-                            .addComponent(btnApagar, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
+                            .addComponent(btnEdit, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(btnApagar, javax.swing.GroupLayout.PREFERRED_SIZE, 91, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(61, 61, 61)))
                 .addGap(110, 110, 110))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addGap(20, 20, 20)
-                .addComponent(jLabel1)
+                .addComponent(lblTitulo)
                 .addGap(40, 40, 40)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(txtId, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(ID))
+                    .addComponent(lblId))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(txtEmail, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(email))
+                    .addComponent(lblEmail))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(txtNome, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(nome))
+                    .addComponent(lblNome))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(senha)
-                    .addComponent(txtSenha, javax.swing.GroupLayout.PREFERRED_SIZE, 26, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(50, 50, 50)
+                    .addComponent(lblSenha)
+                    .addComponent(pwdSenha, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(37, 37, 37)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(btnAdd)
@@ -286,7 +306,7 @@ public class TelaUsuarios extends javax.swing.JInternalFrame {
                         .addComponent(btnEdit)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(btnApagar)))
-                .addContainerGap(31, Short.MAX_VALUE))
+                .addContainerGap(54, Short.MAX_VALUE))
         );
 
         pack();
@@ -323,18 +343,18 @@ public class TelaUsuarios extends javax.swing.JInternalFrame {
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JLabel ID;
     private javax.swing.JButton btnAdd;
     private javax.swing.JButton btnApagar;
     private javax.swing.JButton btnEdit;
     private javax.swing.JButton btnVisualizar;
-    private javax.swing.JLabel email;
-    private javax.swing.JLabel jLabel1;
-    private javax.swing.JLabel nome;
-    private javax.swing.JLabel senha;
+    private javax.swing.JLabel lblEmail;
+    private javax.swing.JLabel lblId;
+    private javax.swing.JLabel lblNome;
+    private javax.swing.JLabel lblSenha;
+    private javax.swing.JLabel lblTitulo;
+    private javax.swing.JPasswordField pwdSenha;
     private javax.swing.JTextField txtEmail;
     private javax.swing.JTextField txtId;
     private javax.swing.JTextField txtNome;
-    private javax.swing.JTextField txtSenha;
     // End of variables declaration//GEN-END:variables
 }

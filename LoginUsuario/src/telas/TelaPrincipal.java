@@ -1,11 +1,73 @@
 package telas;
 
+import java.awt.BorderLayout;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 
 public class TelaPrincipal extends javax.swing.JFrame {
 
+    private TelaCliente telaCliente;
+    private TelaUsuarios telaUsuarios;
+    private JLabel lblBoasVindas;
+    private JLabel lblRodape;
+    private final String usuarioLogado;
+
     public TelaPrincipal() {
+        this("Usuário");
+    }
+
+    public TelaPrincipal(String nomeUsuario) {
+        this.usuarioLogado = nomeUsuario;
         initComponents();
+        montarLayout();
+        iniciarRelogio();
+        menuSair.setAccelerator(javax.swing.KeyStroke.getKeyStroke("control Q"));
+        menuCadClientes.setAccelerator(javax.swing.KeyStroke.getKeyStroke("control shift C"));
+        setTitle("Sistema de Cadastro");
+        setExtendedState(MAXIMIZED_BOTH);
+    }
+
+    private void montarLayout() {
+        getContentPane().removeAll();
+        getContentPane().setLayout(new BorderLayout());
+        desktop.setLayout(null);
+        desktop.setBackground(new java.awt.Color(236, 240, 245));
+        getContentPane().add(desktop, BorderLayout.CENTER);
+
+        lblRodape = new JLabel();
+        lblRodape.setBorder(javax.swing.BorderFactory.createEmptyBorder(6, 12, 6, 12));
+        getContentPane().add(lblRodape, BorderLayout.SOUTH);
+
+        lblBoasVindas = new JLabel("<html><div style='text-align:center'>"
+                + "<span style='font-size:28px'>Bem-vindo, " + usuarioLogado + "!</span><br><br>"
+                + "<span style='font-size:14px;color:gray'>Use o menu Cadastro para começar</span>"
+                + "</div></html>", JLabel.CENTER);
+        desktop.add(lblBoasVindas, javax.swing.JLayeredPane.FRAME_CONTENT_LAYER);
+
+        desktop.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                lblBoasVindas.setBounds(0, 0, desktop.getWidth(), desktop.getHeight());
+            }
+        });
+    }
+
+    private void iniciarRelogio() {
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy  HH:mm:ss");
+        javax.swing.Timer timer = new javax.swing.Timer(1000, e
+                -> lblRodape.setText("Usuário: " + usuarioLogado + "     |     "
+                        + LocalDateTime.now().format(fmt)));
+        timer.setInitialDelay(0);
+        timer.start();
+    }
+
+    private void abrirTela(javax.swing.JInternalFrame tela) {
+        desktop.add(tela);
+        tela.setLocation((desktop.getWidth() - tela.getWidth()) / 2,
+                (desktop.getHeight() - tela.getHeight()) / 2);
+        tela.setVisible(true);
     }
 
     @SuppressWarnings("unchecked")
@@ -120,9 +182,12 @@ public class TelaPrincipal extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void menuCadClientesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuCadClientesActionPerformed
-        TelaCliente cliente = new TelaCliente();
-        desktop.add(cliente);
-        cliente.setVisible(true);
+        if (telaCliente == null || telaCliente.isClosed()) {
+            telaCliente = new TelaCliente();
+            abrirTela(telaCliente);
+        } else {
+            telaCliente.toFront();
+        }
     }//GEN-LAST:event_menuCadClientesActionPerformed
 
     private void menuAjudaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuAjudaActionPerformed
@@ -130,22 +195,24 @@ public class TelaPrincipal extends javax.swing.JFrame {
     }//GEN-LAST:event_menuAjudaActionPerformed
 
     private void menuSairActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuSairActionPerformed
-        int sair = JOptionPane.showConfirmDialog(null, "Tem certeza que deseja sair?", "Atenção", JOptionPane.YES_OPTION);
-
+        int sair = JOptionPane.showConfirmDialog(this, "Tem certeza que deseja sair?",
+                "Atenção", JOptionPane.YES_NO_OPTION);
         if (sair == JOptionPane.YES_OPTION) {
             System.exit(0);
         }
     }//GEN-LAST:event_menuSairActionPerformed
 
     private void menuSobreActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuSobreActionPerformed
-        TelaSobre sobre = new TelaSobre();
-        sobre.setVisible(true);
+        new TelaSobre().setVisible(true);
     }//GEN-LAST:event_menuSobreActionPerformed
 
     private void usuarioActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_usuarioActionPerformed
-        TelaUsuarios usuario = new TelaUsuarios();
-        desktop.add(usuario);
-        usuario.setVisible(true);
+        if (telaUsuarios == null || telaUsuarios.isClosed()) {
+            telaUsuarios = new TelaUsuarios();
+            abrirTela(telaUsuarios);
+        } else {
+            telaUsuarios.toFront();
+        }
     }//GEN-LAST:event_usuarioActionPerformed
 
     private void menuCadActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuCadActionPerformed
@@ -163,16 +230,24 @@ public class TelaPrincipal extends javax.swing.JFrame {
                 if ("Nimbus".equals(info.getName())) {
                     javax.swing.UIManager.setLookAndFeel(info.getClassName());
                     break;
+
                 }
             }
         } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(TelaPrincipal.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(TelaPrincipal.class
+                    .getName()).log(java.util.logging.Level.SEVERE, null, ex);
+
         } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(TelaPrincipal.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(TelaPrincipal.class
+                    .getName()).log(java.util.logging.Level.SEVERE, null, ex);
+
         } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(TelaPrincipal.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(TelaPrincipal.class
+                    .getName()).log(java.util.logging.Level.SEVERE, null, ex);
+
         } catch (javax.swing.UnsupportedLookAndFeelException ex) {
-            java.util.logging.Logger.getLogger(TelaPrincipal.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(TelaPrincipal.class
+                    .getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
         //</editor-fold>
 

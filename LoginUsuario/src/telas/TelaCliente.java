@@ -7,6 +7,7 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
 import javax.swing.JOptionPane;
 import DAO.Mod_conexao;
 
@@ -15,12 +16,18 @@ public class TelaCliente extends javax.swing.JInternalFrame {
     private Connection conexao;
 
     private final DateTimeFormatter FORMATO_DATA
-            = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            = DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT);
 
     public TelaCliente() {
         initComponents();
+        setClosable(true);
+        setIconifiable(true);
+        setMaximizable(true);
+        setResizable(true);
         conexao = Mod_conexao.conector();
         configurarMascaras();
+        rbCPF.setSelected(true);
+        configurarMascaraDocumento("CPF");
     }
 
     private void configurarMascaras() {
@@ -95,7 +102,8 @@ public class TelaCliente extends javax.swing.JInternalFrame {
         TXTdocumento.setText("");
         txtTeleCliente.setText("");
         txtDatNascCliente.setText("");
-        buttonGroup1.clearSelection();
+        rbCPF.setSelected(true);
+        configurarMascaraDocumento("CPF");
     }
 
     // =========================
@@ -134,77 +142,100 @@ public class TelaCliente extends javax.swing.JInternalFrame {
         return null;
     }
 
+    private String digitos(String s) {
+        return s.replaceAll("\\D", "");
+    }
+
+    private boolean cpfValido(String cpf) {
+        if (cpf.length() != 11 || cpf.matches("(\\d)\\1{10}")) {
+            return false;
+        }
+        for (int t = 9; t < 11; t++) {
+            int soma = 0;
+            for (int i = 0; i < t; i++) {
+                soma += (cpf.charAt(i) - '0') * (t + 1 - i);
+            }
+            int dv = (soma * 10) % 11;
+            if (dv == 10) {
+                dv = 0;
+            }
+            if (dv != cpf.charAt(t) - '0') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean cnpjValido(String cnpj) {
+        if (cnpj.length() != 14 || cnpj.matches("(\\d)\\1{13}")) {
+            return false;
+        }
+        int[] pesos1 = {5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2};
+        int[] pesos2 = {6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2};
+        return cnpj.charAt(12) - '0' == dvCnpj(cnpj, pesos1)
+                && cnpj.charAt(13) - '0' == dvCnpj(cnpj, pesos2);
+    }
+
+    private int dvCnpj(String cnpj, int[] pesos) {
+        int soma = 0;
+        for (int i = 0; i < pesos.length; i++) {
+            soma += (cnpj.charAt(i) - '0') * pesos[i];
+        }
+        int r = soma % 11;
+        return r < 2 ? 0 : 11 - r;
+    }
+
     // =========================
-    // VALIDAR CAMPOS
-    // =========================
+// VALIDAR CAMPOS
+// =========================
     private boolean validarCampos() {
 
         if (txtNomeCliente.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Informe o nome do cliente."
-            );
+            JOptionPane.showMessageDialog(this, "Informe o nome do cliente.",
+                    "Atenção", JOptionPane.WARNING_MESSAGE);
             txtNomeCliente.requestFocus();
             return false;
         }
 
         if (txtEndeCliente.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Informe o endereço do cliente."
-            );
+            JOptionPane.showMessageDialog(this, "Informe o endereço do cliente.",
+                    "Atenção", JOptionPane.WARNING_MESSAGE);
             txtEndeCliente.requestFocus();
             return false;
         }
 
         if (cmbCidade.getSelectedIndex() == 0) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Selecione uma cidade."
-            );
+            JOptionPane.showMessageDialog(this, "Selecione uma cidade.",
+                    "Atenção", JOptionPane.WARNING_MESSAGE);
             cmbCidade.requestFocus();
             return false;
         }
 
         if (cmbUf.getSelectedIndex() == 0) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Selecione uma UF."
-            );
+            JOptionPane.showMessageDialog(this, "Selecione uma UF.",
+                    "Atenção", JOptionPane.WARNING_MESSAGE);
             cmbUf.requestFocus();
             return false;
         }
 
-        if (TXTdocumento.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Informe o CPF ou CNPJ."
-            );
+        String tipo = getTipoCliente();
+        if (tipo == null) {
+            return false;
+        }
+
+        String doc = digitos(TXTdocumento.getText());
+        boolean docOk = tipo.equals("PF") ? cpfValido(doc) : cnpjValido(doc);
+        if (!docOk) {
+            JOptionPane.showMessageDialog(this, "CPF/CNPJ inválido.",
+                    "Atenção", JOptionPane.WARNING_MESSAGE);
             TXTdocumento.requestFocus();
             return false;
         }
 
-        if (txtTeleCliente.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Informe o telefone."
-            );
+        if (digitos(txtTeleCliente.getText()).length() != 11) {
+            JOptionPane.showMessageDialog(this, "Telefone incompleto.",
+                    "Atenção", JOptionPane.WARNING_MESSAGE);
             txtTeleCliente.requestFocus();
-            return false;
-        }
-
-        if (txtDatNascCliente.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Informe a data de nascimento."
-            );
-            txtDatNascCliente.requestFocus();
-            return false;
-        }
-
-        String tipo = getTipoCliente();
-
-        if (tipo == null) {
             return false;
         }
 
@@ -215,27 +246,30 @@ public class TelaCliente extends javax.swing.JInternalFrame {
         return true;
     }
 
-    // =========================
-    // VALIDAR DATA
-    // =========================
+// =========================
+// VALIDAR DATA
+// =========================
     private boolean validarData() {
 
         String data = txtDatNascCliente.getText().trim();
 
         try {
+            LocalDate nasc = LocalDate.parse(data, FORMATO_DATA);
 
-            LocalDate.parse(data, FORMATO_DATA);
+            if (nasc.isAfter(LocalDate.now())) {
+                JOptionPane.showMessageDialog(this, "A data não pode ser futura.",
+                        "Atenção", JOptionPane.WARNING_MESSAGE);
+                txtDatNascCliente.requestFocus();
+                return false;
+            }
+
             return true;
 
         } catch (DateTimeParseException e) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Data inválida.\nDigite no formato DD/MM/AAAA."
-            );
-
+            JOptionPane.showMessageDialog(this,
+                    "Data inválida.\nDigite no formato DD/MM/AAAA.",
+                    "Atenção", JOptionPane.WARNING_MESSAGE);
             txtDatNascCliente.requestFocus();
-
             return false;
         }
     }
@@ -254,8 +288,8 @@ public class TelaCliente extends javax.swing.JInternalFrame {
     }
 
     // =========================
-    // CONSULTAR
-    // =========================
+// CONSULTAR
+// =========================
     private void consultar() {
 
         if (!verificarConexao()) {
@@ -265,11 +299,8 @@ public class TelaCliente extends javax.swing.JInternalFrame {
         String id = txtIdCliente.getText().trim();
 
         if (id.isEmpty()) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Informe o ID do cliente."
-            );
-
+            JOptionPane.showMessageDialog(this, "Informe o ID do cliente.",
+                    "Atenção", JOptionPane.WARNING_MESSAGE);
             txtIdCliente.requestFocus();
             return;
         }
@@ -284,81 +315,77 @@ public class TelaCliente extends javax.swing.JInternalFrame {
 
                 if (rs.next()) {
 
-                    txtNomeCliente.setText(
-                            rs.getString("nome_cliente")
-                    );
-
-                    txtEndeCliente.setText(
-                            rs.getString("endereco_cliente")
-                    );
-
-                    cmbCidade.setSelectedItem(
-                            rs.getString("cidade_cliente")
-                    );
-
-                    cmbUf.setSelectedItem(
-                            rs.getString("uf_cliente")
-                    );
+                    txtNomeCliente.setText(rs.getString("nome_cliente"));
+                    txtEndeCliente.setText(rs.getString("endereco_cliente"));
+                    cmbCidade.setSelectedItem(rs.getString("cidade_cliente"));
+                    cmbUf.setSelectedItem(rs.getString("uf_cliente"));
 
                     String tipo = rs.getString("tipo_cliente");
 
                     if ("PF".equalsIgnoreCase(tipo)) {
-
                         rbCPF.setSelected(true);
                         configurarMascaraDocumento("CPF");
-
                     } else if ("PJ".equalsIgnoreCase(tipo)) {
-
                         RB.setSelected(true);
                         configurarMascaraDocumento("CNPJ");
                     }
 
+                    String docMascara = "PF".equalsIgnoreCase(tipo)
+                            ? "###.###.###-##"
+                            : "##.###.###/####-##";
+
                     TXTdocumento.setText(
-                            rs.getString("cpf_cnpj_cliente")
+                            aplicarMascara(rs.getString("cpf_cnpj_cliente"), docMascara)
                     );
 
                     txtTeleCliente.setText(
-                            rs.getString("telefone_cliente")
+                            aplicarMascara(rs.getString("telefone_cliente"), "(##) #####-####")
                     );
 
                     String data = rs.getString("data_nasc_cliente");
 
                     if (data != null && !data.isEmpty()) {
-
                         try {
-
-                            LocalDate dataNascimento
-                                    = LocalDate.parse(data);
-
-                            txtDatNascCliente.setText(
-                                    dataNascimento.format(FORMATO_DATA)
-                            );
-
+                            LocalDate dataNascimento = LocalDate.parse(data);
+                            txtDatNascCliente.setText(dataNascimento.format(FORMATO_DATA));
                         } catch (DateTimeParseException e) {
-
                             txtDatNascCliente.setText(data);
                         }
                     }
 
                 } else {
 
-                    JOptionPane.showMessageDialog(
-                            this,
-                            "Cliente não cadastrado."
-                    );
-
+                    JOptionPane.showMessageDialog(this, "Cliente não cadastrado.",
+                            "Atenção", JOptionPane.INFORMATION_MESSAGE);
                     limparCampos();
                 }
             }
 
         } catch (SQLException e) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Erro ao consultar cliente:\n"
-                    + e.getMessage()
-            );
+            JOptionPane.showMessageDialog(this, "Erro ao consultar cliente:\n" + e.getMessage(),
+                    "Erro", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    //Metodo para aplicar a mascara
+    private String aplicarMascara(String valor, String mascara) {
+        if (valor == null) {
+            return "";
+        }
+        String d = digitos(valor);
+        StringBuilder sb = new StringBuilder();
+        int i = 0;
+        for (char c : mascara.toCharArray()) {
+            if (c == '#') {
+                if (i >= d.length()) {
+                    break;
+                }
+                sb.append(d.charAt(i++));
+            } else {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
     }
 
     // =========================
@@ -412,7 +439,7 @@ public class TelaCliente extends javax.swing.JInternalFrame {
 
             pst.setString(
                     5,
-                    TXTdocumento.getText().trim()
+                    digitos(TXTdocumento.getText().trim())
             );
 
             pst.setString(
@@ -422,7 +449,7 @@ public class TelaCliente extends javax.swing.JInternalFrame {
 
             pst.setString(
                     7,
-                    txtTeleCliente.getText().trim()
+                    digitos(txtTeleCliente.getText().trim())
             );
 
             pst.setString(
@@ -443,12 +470,13 @@ public class TelaCliente extends javax.swing.JInternalFrame {
             }
 
         } catch (SQLException e) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Erro ao adicionar cliente:\n"
-                    + e.getMessage()
-            );
+            if (e.getErrorCode() == 1062) {
+                JOptionPane.showMessageDialog(this, "Já existe um cliente com este CPF/CNPJ.",
+                        "Duplicado", JOptionPane.WARNING_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this, "Erro ao adicionar cliente:\n" + e.getMessage(),
+                        "Erro", JOptionPane.ERROR_MESSAGE);
+            }
         }
     }
 
@@ -521,7 +549,7 @@ public class TelaCliente extends javax.swing.JInternalFrame {
 
             pst.setString(
                     5,
-                    TXTdocumento.getText().trim()
+                    digitos(TXTdocumento.getText().trim())
             );
 
             pst.setString(
@@ -531,7 +559,7 @@ public class TelaCliente extends javax.swing.JInternalFrame {
 
             pst.setString(
                     7,
-                    txtTeleCliente.getText().trim()
+                    digitos(txtTeleCliente.getText().trim())
             );
 
             pst.setString(
@@ -562,12 +590,13 @@ public class TelaCliente extends javax.swing.JInternalFrame {
             }
 
         } catch (SQLException e) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Erro ao alterar cliente:\n"
-                    + e.getMessage()
-            );
+            if (e.getErrorCode() == 1062) {
+                JOptionPane.showMessageDialog(this, "Já existe um cliente com este CPF/CNPJ.",
+                        "Duplicado", JOptionPane.WARNING_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this, "Erro ao alterar cliente:\n" + e.getMessage(),
+                        "Erro", JOptionPane.ERROR_MESSAGE);
+            }
         }
     }
 
